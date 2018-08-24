@@ -40,10 +40,10 @@ function handleRequest(req, res) {
         return;
       }
 
-      let json = null;
+      let entries = null;
 
       try {
-        json = JSON.parse(body);
+        entries = body.toString().split(/\n/).filter((line) => line.trim().length > 0).map((line) => JSON.parse(line));
       } catch(e) {
         res.writeHead(422);
         res.end();
@@ -55,7 +55,7 @@ function handleRequest(req, res) {
 
       archive.pipe(res);
 
-      download(json, 0, archive, res);
+      download(entries, 0, archive, res);
     });
   } else if(reqUrl.pathname === "/status") {
     res.writeHead(200);
