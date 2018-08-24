@@ -1,10 +1,11 @@
 
 const http = require("http");
+const https = require("https");
 const request = require("request");
 const archiver = require("archiver");
 const url = require("url");
 
-function download(entries, current, archive, response) {
+function download(entries, current, archive) {
   if(current >= entries.length) {
     archive.finalize();
 
@@ -12,56 +13,72 @@ function download(entries, current, archive, response) {
   }
 
   const entry = entries[current];
+  const scheme = entry.url.match(/^https:/) ? https : http;
 
-  request.get({ url: entry.url, encoding: null }, function(err, response, body) {
-    download(entries, current + 1, archive, response);
-  }).on("response", function(response) {
-    archive.append(response, { name: entry.filename });
-  });
+  try {
+    scheme.get(entry.url, function(resp) {
+      archive.append(resp, { name: entry.filename });
+
+      resp.on("end", function() {
+        download(entries, current + 1, archive);
+      });
+    });
+  } catch(e) {
+    console.log(e);
+
+    download(entries, current + 1, archive);
+  }
 }
 
 function handleRequest(req, res) {
-  const archive = archiver("zip");
-  const reqUrl = new url.URL(req.url, "http://localhost/")
-  
-  if(reqUrl.pathname === "/download") {
-    if(reqUrl.searchParams.get("token") !== process.env.TOKEN) {
-      res.writeHead(403);
+  try {
+    const archive = archiver("zip");
+    const reqUrl = new url.URL(req.url, "http://localhost/")
+    
+    if(reqUrl.pathname === "/download") {
+      if(reqUrl.searchParams.get("token") !== process.env.TOKEN) {
+        res.writeHead(403);
+        res.end();
+
+        return;
+      }
+
+      request(reqUrl.searchParams.get("url"), function(err, response, body) {
+        if(err) {
+          res.writeHead(500);
+          res.end();
+
+          return;
+        }
+
+        let entries = null;
+
+        try {
+          entries = body.toString().split(/\n/).filter((line) => line.trim().length > 0).map((line) => JSON.parse(line));
+        } catch(e) {
+          res.writeHead(422);
+          res.end();
+
+          return;
+        }
+
+        res.writeHead(200, { "content-type": "application/zip" });
+
+        archive.pipe(res);
+
+        download(entries, 0, archive);
+      });
+    } else if(reqUrl.pathname === "/status") {
+      res.writeHead(200);
       res.end();
-
-      return;
+    } else {
+      res.writeHead(404);
+      res.end();
     }
+  } catch(e) {
+    console.log(e);
 
-    request(reqUrl.searchParams.get("url"), function(err, response, body) {
-      if(err) {
-        res.writeHead(500);
-        res.end();
-
-        return;
-      }
-
-      let entries = null;
-
-      try {
-        entries = body.toString().split(/\n/).filter((line) => line.trim().length > 0).map((line) => JSON.parse(line));
-      } catch(e) {
-        res.writeHead(422);
-        res.end();
-
-        return;
-      }
-
-      res.writeHead(200, { "content-type": "application/zip" });
-
-      archive.pipe(res);
-
-      download(entries, 0, archive, res);
-    });
-  } else if(reqUrl.pathname === "/status") {
-    res.writeHead(200);
-    res.end();
-  } else {
-    res.writeHead(404);
+    res.writeHead(500);
     res.end();
   }
 }
