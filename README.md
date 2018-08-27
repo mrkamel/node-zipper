@@ -34,7 +34,7 @@ while generating a zip file and stream it to the user as `file.zip`.
 
 ```
 $ npm install
-$ TOKEN=SECRET_TOKEN node app.js
+$ PORT=8080 BIND=0.0.0.0 TOKEN=SECRET_TOKEN node app.js
 ```
 
 # Signature
