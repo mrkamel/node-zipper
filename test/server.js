@@ -5,6 +5,7 @@ const http = require("http");
 const nock = require("nock");
 const fs = require("fs");
 const StreamZip = require('node-stream-zip');
+const crypto = require("crypto");
 
 describe("Server", function() {
   before(function() {
@@ -44,9 +45,10 @@ describe("Server", function() {
     mock.get("/file1.txt").reply(200, "file1");
     mock.get("/file2.txt").reply(200, "file2");
 
-    http.get(`http://localhost:8080/download?token=TOKEN&url=${encodeURIComponent(url)}`, function(res) {
+    const signature = crypto.createHash("sha256").update(`TOKEN:${url}`).digest().toString("hex");
+
+    http.get(`http://localhost:8080/download?signature=${signature}&url=${encodeURIComponent(url)}&filename=stream.zip`, function(res) {
       const file = "/tmp/file.zip";
-      let data = "";
 
       res.pipe(fs.createWriteStream("/tmp/file.zip", { encoding: "binary" }));
 
