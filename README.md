@@ -39,5 +39,5 @@ $ TOKEN=SECRET_TOKEN node app.js
 
 # Signature
 
-The signature is build and checked via `sha256(token + ":" + url)`
+The signature is build and checked via `sha256(token + ":" filename + ":" + url)`
 

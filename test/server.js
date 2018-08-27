@@ -45,7 +45,7 @@ describe("Server", function() {
     mock.get("/file1.txt").reply(200, "file1");
     mock.get("/file2.txt").reply(200, "file2");
 
-    const signature = crypto.createHash("sha256").update(`TOKEN:${url}`).digest().toString("hex");
+    const signature = crypto.createHash("sha256").update(`TOKEN:stream.zip:${url}`).digest().toString("hex");
 
     http.get(`http://localhost:8080/download?signature=${signature}&url=${encodeURIComponent(url)}&filename=stream.zip`, function(res) {
       const file = "/tmp/file.zip";
